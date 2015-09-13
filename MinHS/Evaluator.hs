@@ -33,7 +33,13 @@ evalE _ (Con "False") = B False
 evalE _ (Con "Nil")   = Nil
 
 --var expression
+evalE env (Var id) = case E.lookup env id of
+    Just v -> v
+    _      -> error ("Not in scope: " ++ show(id))
 
+-- let expression
+evalE env (Let [] e) = evalE env e
+evalE env (Let ((Bind id t [] e1) : xs) e2) = evalE (E.add env (id, (evalE env e1))) (Let xs e2)
 
 -- primitive operations
 evalE env (App (App (Prim op) e1) e2) = 
