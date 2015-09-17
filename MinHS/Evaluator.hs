@@ -10,6 +10,9 @@ data Value = I Integer
            | B Bool
            | Nil
            | Cons Integer Value
+           | PartialPrim Op Value
+           | PartialCon Value
+           | Func Bind
            -- Others as needed
            deriving (Show)
 
@@ -32,7 +35,7 @@ evalE _ (Con "True")  = B True
 evalE _ (Con "False") = B False
 evalE _ (Con "Nil")   = Nil
 
---var expression
+-- variable expression
 evalE env (Var id) = case E.lookup env id of
     Just v -> v
     _      -> error ("Not in scope: " ++ show(id))
@@ -41,25 +44,28 @@ evalE env (Var id) = case E.lookup env id of
 evalE env (Let [] e) = evalE env e
 evalE env (Let ((Bind id t [] e1) : xs) e2) = evalE (E.add env (id, (evalE env e1))) (Let xs e2)
 
--- primitive operations
+-- primitive unary operation
+evalE env (App (Prim Ne) e) = let I i = evalE env e in I $ negate $ i
+
+-- primitive binary operations
 evalE env (App (App (Prim op) e1) e2) = 
     let I i1 = evalE env e1
         I i2 = evalE env e2
     in case op of
-        Add   -> I (i1 + i2)
-        Sub   -> I (i1 - i2)
-        Mul   -> I (i1 * i2)
+        Add   -> I $ i1 + i2
+        Sub   -> I $ i1 - i2
+        Mul   -> I $ i1 * i2
         Quot  -> case i2 of
             0 -> error "Exception: divide by zero"
-            _ -> I (quot i1 i2)
+            _ -> I $ quot i1 i2
         Rem   -> case i2 of
             0 -> error "Exception: divide by zero"
-            _ -> I (rem i1 i2)
-        Gt    -> B (i1 > i2)
-        Ge    -> B (i1 >= i2)
-        Lt    -> B (i1 < i2)
-        Le    -> B (i1 <= i2)
-        Eq    -> B (i1 == i2)
+            _ -> I $ rem i1 i2
+        Gt    -> B $ i1 > i2
+        Ge    -> B $ i1 >= i2
+        Lt    -> B $ i1 < i2
+        Le    -> B $ i1 <= i2
+        Eq    -> B $ i1 == i2
 
 -- if statement
 evalE env (If guard e1 e2) = 
@@ -79,3 +85,14 @@ evalE env (App (Prim Tail) list) = case evalE env list of
 evalE env (App (Prim Null) list) = case evalE env list of
     Nil      -> B True
     Cons _ _ -> B False
+
+evalE env (App (App (Con "Cons") e1) e2) = let I i = evalE env e1 in Cons i (evalE env e2)
+
+-- function application
+evalE env (App (Letfun (Bind func _ [] body)) e)     = evalE (E.add env (func, (evalE env body))) (App (Var func) e)
+evalE env (App (Letfun f@(Bind func _ [para] body)) e) = evalE (E.add (E.add env (para, evalE env e)) (func, Func f)) body
+
+--partial primitive operation
+evalE env (App (Prim op) e) = PartialPrim op (evalE env e)
+evalE env (App (Con "Cons") e) = PartialCon (evalE env e)
+
