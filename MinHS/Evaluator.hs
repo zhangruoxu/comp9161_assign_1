@@ -10,8 +10,7 @@ data Value = I Integer
            | B Bool
            | Nil
            | Cons Integer Value
-           | PartialPrimRight Op Value
-           | PartialPrimLeft Op Value
+           | PartialPrim Op Value
            | PartialCon Value
            | Func Bind
            -- Others as needed
@@ -94,26 +93,25 @@ evalE env (App (Letfun (Bind func _ [] body)) e)       = evalE (E.add env (func,
 evalE env (App (Letfun f@(Bind func _ [para] body)) e) = evalE (E.add (E.add env (para, evalE env e)) (func, Func f)) body
 
 -- partial primitive operation
-evalE env (App (Prim op) e)    = PartialPrimRight op (evalE env e)
-evalE env (App e (Prim op))    = PartialPrimLeft op (evalE env e)
+evalE env (App (Prim op) e) = PartialPrim op (evalE env e)
 evalE env (App (Con "Cons") e) = PartialCon (evalE env e)
 
 -- partial function application
 evalE env (App (Var func) e) = case evalE env e of
     (I i2) -> case evalE env (Var func) of
-        PartialPrimLeft Add (I i1) -> I $ i1 + i2
-        PartialPrimLeft Sub (I i1) -> I $ i1 - i2
-        PartialPrimLeft Mul (I i1) -> I $ i1 * i2
-        PartialPrimLeft Quot (I i1) -> case i2 of
+        PartialPrim Add (I i1) -> I $ i1 + i2
+        PartialPrim Sub (I i1) -> I $ i1 - i2
+        PartialPrim Mul (I i1) -> I $ i1 * i2
+        PartialPrim Quot (I i1) -> case i2 of
             0 -> error "Exception: divide by zero"
             _ -> I $ quot i1 i2
-        PartialPrimLeft Rem (I i1) -> case i2 of
+        PartialPrim Rem (I i1) -> case i2 of
             0 -> error "Exception: divide by zero"
             _ -> I $ rem i1 i2
     (B b2) -> case evalE env (Var func) of 
-        PartialPrimLeft Gt (B b1) -> B $ b1 > b2
-        PartialPrimLeft Ge (B b1) -> B $ b1 >= b2
-        PartialPrimLeft Lt (B b1) -> B $ b1 < b2
-        PartialPrimLeft Le (B b1) -> B $ b1 <= b2
-        PartialPrimLeft Eq (B b1) -> B $ b1 == b2
+        PartialPrim Gt (B b1) -> B $ b1 > b2
+        PartialPrim Ge (B b1) -> B $ b1 >= b2
+        PartialPrim Lt (B b1) -> B $ b1 < b2
+        PartialPrim Le (B b1) -> B $ b1 <= b2
+        PartialPrim Eq (B b1) -> B $ b1 == b2
    
