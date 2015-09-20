@@ -13,6 +13,7 @@ data Value = I Integer
            | PartialPrim Op Value
            | PartialCon Value
            | Func Bind
+           | Closure VEnv Bind
            -- Others as needed
            deriving (Show)
 
@@ -91,11 +92,16 @@ evalE env (App (Prim Null) list) = case evalE env list of
 evalE env (App (App (Con "Cons") e1) e2) = let I i = evalE env e1 in Cons i (evalE env e2)
 
 -- function abstraction
-evalE env (Letfun bind) = Func bind
+evalE env (Letfun bind) = Closure env bind
 
+-- closure
+evalE env (App e1 e2) = evalE (E.add (E.add env (func, v1)) (arg, v2)) body
+    where v1@(Closure env' (Bind func _ [arg] body)) = evalE env e1
+          v2 = evalE env e2
+    
 -- unary function application
 evalE env (App (Letfun (Bind func _ [] body)) e)       = evalE (E.add env (func, (evalE env body))) (App (Var func) e)
-evalE env (App (Letfun f@(Bind func _ [para] body)) e) = evalE (E.add (E.add env (para, evalE env e)) (func, Func f)) body
+evalE env (App (Letfun f@(Bind func _ [arg] body)) e) = evalE (E.add (E.add env (arg, evalE env e)) (func, Func f)) body
 
 -- partial primitive operation
 evalE env (App (Prim op) e) = PartialPrim op (evalE env e)
@@ -123,5 +129,4 @@ evalE env (App v@(Var func) e) = case evalE env v of
     where I i2 = evalE env e 
           B b2 = evalE env e
 
--- evalE _ e = error $ show e
-
+evalE _ e = error $ show e
