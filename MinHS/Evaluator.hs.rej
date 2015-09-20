@@ -1,0 +1,9 @@
+diff a/MinHS/Evaluator.hs b/MinHS/Evaluator.hs	(rejected hunks)
+@@ -129,5 +129,4 @@
+     where I i2 = evalE env e 
+           B b2 = evalE env e
+ 
+--- evalE _ e = error $ show e
+-
++evalE _ e = error $ show e
+\ No newline at end of file
